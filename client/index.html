@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sri Ammavari Utsavam Seva Portal | Village Festival Fund & Expense Transparency</title>
+  <!-- Modern Devotional Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Background Music Toggle -->
+  <div class="audio-control-container">
+    <button id="music-toggle" class="music-btn" title="Toggle Temple Bells">
+      <svg class="icon-bell" viewBox="0 0 24 24">
+        <path d="M12 2C10.34 2 9 3.34 9 5v1.09C6.17 6.64 4 9.13 4 12v5l-2 2v1h20v-1l-2-2v-5c0-2.87-2.17-5.36-5-5.91V5c0-1.66-1.34-3-3-3zm0 20c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2z"/>
+      </svg>
+      <span class="music-label">Temple Bells</span>
+    </button>
+  </div>
+
+  <!-- Breathtaking Canvas Canvas for Jasmine & Marigold Rain -->
+  <canvas id="animation-canvas"></canvas>
+
+  <!-- Navigation Bar -->
+  <header class="app-header">
+    <div class="header-logo">
+      <span class="logo-symbol">🔱</span>
+      <h1 class="logo-text">Sri Ammavari Seva</h1>
+    </div>
+    <button class="mobile-menu-btn" id="mobile-menu-btn">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+    <nav class="app-nav" id="app-nav">
+      <a href="#home" class="nav-link active" data-page="home">Home</a>
+      <a href="#donations" class="nav-link" data-page="donations">Donations</a>
+      <a href="#expenses" class="nav-link" data-page="expenses">Expenses</a>
+      <a href="#events" class="nav-link" data-page="events">Schedule</a>
+      <a href="#gallery" class="nav-link" data-page="gallery">Gallery</a>
+      <a href="#admin" class="nav-link admin-nav-link" data-page="admin">Admin Portal</a>
+    </nav>
+  </header>
+
+  <!-- Live Announcement Bar -->
+  <div class="announcement-ticker" id="announcement-ticker">
+    <div class="ticker-label">📢 Announcement:</div>
+    <div class="ticker-content-wrapper">
+      <div class="ticker-content" id="announcement-text">
+        Welcome to Sri Ammavari Utsavam Portal! You can now scan QR codes to send donations and view direct receipts.
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN SPA CONTENT AREAS -->
+  <main class="app-content">
+
+    <!-- 1. HOME LANDING VIEW -->
+    <section id="page-home" class="app-page active">
+      <div class="hero-section">
+        <div class="hero-image-container">
+          <img src="/assets/ammavari.png" alt="Sri Ammavari Deity" class="hero-deity-img">
+          <div class="divine-sunburst"></div>
+        </div>
+        
+        <div class="hero-content">
+          <h2 class="divine-slogan">|| శ్రీ గ్రామ దేవతా ప్రసన్న ||</h2>
+          <h1 class="festival-title">Sri Ammavari Utsavam</h1>
+          <p class="festival-subtitle">Annual Village Festival & Divine Celebrations</p>
+          
+          <div class="diya-decor">
+            <div class="diya-glow">🕯️</div>
+            <div class="diya-separator"></div>
+            <div class="diya-glow">🕯️</div>
+          </div>
+
+          <!-- Festival Countdown -->
+          <div class="countdown-card">
+            <h3>🛕 Utsavam Festival Begins In:</h3>
+            <div class="countdown-timer" id="countdown">
+              <div class="time-block"><span id="days">00</span><label>Days</label></div>
+              <div class="time-block"><span id="hours">00</span><label>Hrs</label></div>
+              <div class="time-block"><span id="minutes">00</span><label>Mins</label></div>
+              <div class="time-block"><span id="seconds">00</span><label>Secs</label></div>
+            </div>
+          </div>
+
+          <div class="hero-actions">
+            <button class="btn btn-primary btn-lg pulse" id="hero-donate-btn">
+              <span>Scan & Donate Now</span>
+              <span class="btn-shine"></span>
+            </button>
+            <a href="#expenses" class="btn btn-secondary btn-lg">View Expense Trust</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Metrics Summary on Landing -->
+      <div class="quick-stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon">💰</div>
+          <div class="stat-details">
+            <h4 id="quick-total-donations">₹0</h4>
+            <p>Total Collected</p>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">⚖️</div>
+          <div class="stat-details">
+            <h4 id="quick-total-expenses">₹0</h4>
+            <p>Total Spent</p>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">🙏</div>
+          <div class="stat-details">
+            <h4 id="quick-donors-count">0</h4>
+            <p>Devoted Donors</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. DONATIONS VIEW -->
+    <section id="page-donations" class="app-page">
+      <div class="section-header">
+        <h2>Donations & Seva Fund</h2>
+        <p>Support our village festival celebrations. Scan to donate instantly, upload screenshot, and be part of the wall of honor.</p>
+      </div>
+
+      <!-- Goal Tracker -->
+      <div class="goal-tracker-card glass">
+        <div class="goal-header">
+          <h3>Festival Donation Goal Progress</h3>
+          <span class="goal-numbers"><strong id="stats-collected">₹0</strong> / <span id="stats-goal">₹2,00,000</span></span>
+        </div>
+        <div class="goal-bar-container">
+          <div class="goal-progress-bar" id="goal-progress-bar" style="width: 0%">
+            <div class="progress-glow"></div>
+            <span class="progress-flame">🔥</span>
+          </div>
+        </div>
+        <p class="goal-footer-msg" id="goal-percentage-text">0% of the festival seva goal reached. Let us join hands!</p>
+      </div>
+
+      <div class="donations-split-layout">
+        <!-- Live Donation feed & scrolls -->
+        <div class="donations-feed-column">
+          <div class="card-header-divine">
+            <h3>📜 Wall of Honor (Approved Donors)</h3>
+            <span class="blessing-badge">Jai Ammavari</span>
+          </div>
+          
+          <div class="donor-wall-container">
+            <div class="donor-wall-scroller" id="donor-wall-scroller">
+              <!-- Dynamically Populated Donor Cards -->
+              <div class="empty-state">Loading beautiful donations list...</div>
+            </div>
+          </div>
+
+          <!-- Top Donors List -->
+          <div class="top-donors-card glass margin-top-20">
+            <h3>🏆 Main Seva Donors</h3>
+            <ol class="top-donors-list" id="top-donors-list">
+              <!-- Dynamically populated top 5 -->
+            </ol>
+          </div>
+        </div>
+
+        <!-- Call to Action Scan Card -->
+        <div class="donations-scan-column">
+          <div class="scan-action-card glass">
+            <h3>🙏 Make Your Divine Seva Offering</h3>
+            <p>Every contribution helps us organize Grand Annadanam, floral decorations, traditional music, and deity processions.</p>
+            
+            <button class="btn btn-primary btn-full-width" id="trigger-scan-modal-btn">
+              ⚡ Open QR Scanner Details
+            </button>
+
+            <div class="temple-blessing-note">
+              <span class="temple-symbol">🔱</span>
+              <p>"Supporting the temple festival brings peace, prosperity, and health to our home and family."</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. EXPENSES TRANSPARENCY VIEW -->
+    <section id="page-expenses" class="app-page">
+      <div class="section-header">
+        <h2>Village Financial Transparency</h2>
+        <p>100% transparent tracking of every single rupee donated. View itemized festival expenses, descriptions, and uploaded physical receipts/bills.</p>
+      </div>
+
+      <!-- Financial Metrics Grid -->
+      <div class="stats-summary-grid">
+        <div class="metric-card glass-gold">
+          <label>Total Collections</label>
+          <h2 id="summary-collected">₹0</h2>
+          <span class="subtext">From verified online donations</span>
+        </div>
+        <div class="metric-card glass-crimson">
+          <label>Total Spent</label>
+          <h2 id="summary-spent">₹0</h2>
+          <span class="subtext">Itemized bills recorded</span>
+        </div>
+        <div class="metric-card glass-green">
+          <label>Remaining Trust Balance</label>
+          <h2 id="summary-balance">₹0</h2>
+          <span class="subtext">Safe in temple committee account</span>
+        </div>
+      </div>
+
+      <!-- Chart and Table Layout -->
+      <div class="expenses-analytics-grid">
+        <div class="expenses-chart-card glass">
+          <h3>📊 Expense Category Distribution</h3>
+          <div class="chart-wrapper">
+            <!-- Programmatic SVG Donut Chart -->
+            <svg viewBox="0 0 36 36" class="circular-chart" id="expense-donut-chart">
+              <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+              <path class="circle" id="donut-segment-1" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+            </svg>
+            <div class="donut-center-text">
+              <span class="percent" id="chart-percent-spent">0%</span>
+              <span class="label">Funds Spent</span>
+            </div>
+          </div>
+          <div class="chart-legend" id="chart-legend">
+            <!-- Filled programmatically -->
+          </div>
+        </div>
+
+        <div class="expenses-table-card glass">
+          <h3>🧾 Itemized Expenses Ledger</h3>
+          <div class="table-scroll-wrapper">
+            <table class="divine-table">
+              <thead>
+                <tr>
+                  <th>Event Category</th>
+                  <th>Amount</th>
+                  <th>Description</th>
+                  <th>Date</th>
+                  <th>Bill Receipt</th>
+                </tr>
+              </thead>
+              <tbody id="expenses-table-body">
+                <tr>
+                  <td colspan="5" class="text-center">Loading transparent expenses...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. SCHEDULE TIMELINE VIEW -->
+    <section id="page-events" class="app-page">
+      <div class="section-header">
+        <h2>Utsavam Rituals & Schedule</h2>
+        <p>Daily religious timeline, holy poojas, chariot procession pathways, and announcements of live status updates.</p>
+      </div>
+
+      <div class="events-timeline-container" id="events-timeline">
+        <!-- Dynamic vertical timeline -->
+        <div class="empty-state">Loading divine schedule...</div>
+      </div>
+    </section>
+
+    <!-- 5. DIVINE PHOTO/VIDEO GALLERY -->
+    <section id="page-gallery" class="app-page">
+      <div class="section-header">
+        <h2>Devotional Gallery</h2>
+        <p>Explore high-quality photographs, videos, and devotional snippets from our grand village celebrations and decorations.</p>
+      </div>
+
+      <!-- Photo Masonry -->
+      <div class="gallery-masonry" id="gallery-masonry">
+        <!-- Dynamically rendered visual cards -->
+        <div class="empty-state">Loading devotional gallery...</div>
+      </div>
+    </section>
+
+    <!-- 6. ADMIN DASHBOARD PANEL -->
+    <section id="page-admin" class="app-page">
+      <div class="section-header">
+        <h2>Administrative Seva Console</h2>
+        <p>Manage contributions, upload QR gateways, audit itemized expenses, and publish announcements securely.</p>
+      </div>
+
+      <!-- Auth Form (Shown when logged out) -->
+      <div id="admin-auth-card" class="admin-auth-card glass">
+        <h3>🔒 Secure Administrator Authentication</h3>
+        <p class="auth-helper">Access requires authenticated administrative credentials issued by the Temple Committee.</p>
+        
+        <div class="alert alert-error hidden" id="auth-error-banner">Invalid credentials.</div>
+        
+        <form id="admin-login-form">
+          <div class="form-group">
+            <label for="username">Administrator Username</label>
+            <input type="text" id="username" class="form-control" placeholder="e.g. admin" required>
+          </div>
+          <div class="form-group">
+            <label for="password">Security Password</label>
+            <input type="password" id="password" class="form-control" placeholder="••••••••" required>
+          </div>
+          <button type="submit" class="btn btn-primary btn-full-width">Authenticate Securely</button>
+        </form>
+      </div>
+
+      <!-- Authenticated Control Console (Shown when logged in) -->
+      <div id="admin-console-layout" class="admin-console-layout hidden">
+        <div class="admin-sidebar glass">
+          <div class="admin-profile-badge">
+            <span class="admin-avatar">🛕</span>
+            <div class="admin-info">
+              <h4 id="admin-display-name">Festival Administrator</h4>
+              <p>Role: Temple Committee Admin</p>
+            </div>
+          </div>
+          <div class="admin-menu">
+            <button class="admin-menu-link active" data-tab="donations-audit">Confirm Donations</button>
+            <button class="admin-menu-link" data-tab="qr-configs">QR Scanners & Banking</button>
+            <button class="admin-menu-link" data-tab="expenses-audit">Add Expenses</button>
+            <button class="admin-menu-link" data-tab="events-audit">Rituals & Events</button>
+            <button class="admin-menu-link" data-tab="announcements-audit">Announcements</button>
+            <button class="admin-menu-link" data-tab="gallery-audit">Gallery Media</button>
+            <button class="admin-menu-link" data-tab="admin-profile">Profile Settings</button>
+            <button class="admin-logout-btn" id="admin-logout-btn">🚪 Log Out</button>
+          </div>
+        </div>
+
+        <div class="admin-workspace glass">
+          
+          <!-- TAB A: Confirm Pending Donations -->
+          <div class="admin-tab-content active" id="tab-donations-audit">
+            <h3>📜 Verify Seva Submissions</h3>
+            <p>Review payment screenshot receipts side-by-side with submitted amounts. Approve to instantly add to the public wall of honor.</p>
+            
+            <div class="audit-donations-table-container">
+              <table class="divine-table admin-table">
+                <thead>
+                  <tr>
+                    <th>Donor Name</th>
+                    <th>Phone</th>
+                    <th>Amount</th>
+                    <th>Devotional Message</th>
+                    <th>Screenshot Receipt</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="admin-donations-table-body">
+                  <!-- Dynamic pending list -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- TAB B: QR Scanner Management -->
+          <div class="admin-tab-content" id="tab-qr-configs">
+            <h3>🔌 QR Scanner & Bank Settings</h3>
+            <p>Enable/disable payment methods or update standard UPI and Account Details. Changes update public modals in real-time.</p>
+            
+            <form id="admin-qr-form" class="admin-form-grid">
+              <div class="form-card-glass">
+                <h4> GPay Configuration</h4>
+                <div class="form-group">
+                  <label>UPI ID</label>
+                  <input type="text" id="gpay-upi" class="form-control">
+                </div>
+                <div class="form-group">
+                  <label>Recipient Phone</label>
+                  <input type="text" id="gpay-phone" class="form-control">
+                </div>
+                <div class="checkbox-group">
+                  <input type="checkbox" id="gpay-enabled">
+                  <label for="gpay-enabled">Enable Google Pay Gateway</label>
+                </div>
+              </div>
+
+              <div class="form-card-glass">
+                <h4> PhonePe Configuration</h4>
+                <div class="form-group">
+                  <label>UPI ID</label>
+                  <input type="text" id="phonepe-upi" class="form-control">
+                </div>
+                <div class="form-group">
+                  <label>Recipient Phone</label>
+                  <input type="text" id="phonepe-phone" class="form-control">
+                </div>
+                <div class="checkbox-group">
+                  <input type="checkbox" id="phonepe-enabled">
+                  <label for="phonepe-enabled">Enable PhonePe Gateway</label>
+                </div>
+              </div>
+
+              <div class="form-card-glass">
+                <h4> Paytm Configuration</h4>
+                <div class="form-group">
+                  <label>UPI ID</label>
+                  <input type="text" id="paytm-upi" class="form-control">
+                </div>
+                <div class="form-group">
+                  <label>Recipient Phone</label>
+                  <input type="text" id="paytm-phone" class="form-control">
+                </div>
+                <div class="checkbox-group">
+                  <input type="checkbox" id="paytm-enabled">
+                  <label for="paytm-enabled">Enable Paytm Gateway</label>
+                </div>
+              </div>
+
+              <div class="form-card-glass full-width-card">
+                <h4>🏦 Direct Bank Account offering Info</h4>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>Bank Name</label>
+                    <input type="text" id="bank-name" class="form-control">
+                  </div>
+                  <div class="form-group">
+                    <label>Account Holder Name</label>
+                    <input type="text" id="bank-holder" class="form-control">
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>Account Number</label>
+                    <input type="text" id="bank-account" class="form-control">
+                  </div>
+                  <div class="form-group">
+                    <label>IFSC Code</label>
+                    <input type="text" id="bank-ifsc" class="form-control">
+                  </div>
+                </div>
+                <div class="checkbox-group">
+                  <input type="checkbox" id="bank-enabled">
+                  <label for="bank-enabled">Enable Direct Bank Transfer Panel</label>
+                </div>
+              </div>
+
+              <div class="full-width-card action-container">
+                <button type="submit" class="btn btn-primary">Save Gateways Configuration</button>
+              </div>
+            </form>
+          </div>
+
+          <!-- TAB C: Add Expense with Bill receipt -->
+          <div class="admin-tab-content" id="tab-expenses-audit">
+            <h3>💸 Add Festival Expense</h3>
+            <p>Log a physical invoice or purchase receipt. Financial balances and dynamic category charts recalculate automatically.</p>
+            
+            <form id="admin-expense-form" class="admin-entry-form" enctype="multipart/form-data">
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="exp-title">Expense Title / Vendor</label>
+                  <input type="text" id="exp-title" class="form-control" placeholder="e.g. Annadanam Groceries" required>
+                </div>
+                <div class="form-group">
+                  <label for="exp-amount">Amount Spent (₹)</label>
+                  <input type="number" id="exp-amount" class="form-control" placeholder="e.g. 15000" min="1" required>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="exp-category">Expenditure Category</label>
+                  <select id="exp-category" class="form-control" required>
+                    <option value="">Select Category...</option>
+                    <option value="Annadanam">Annadanam (Holy Feast)</option>
+                    <option value="Decoration">Temple Decoration</option>
+                    <option value="Cultural">Cultural & Drums Band</option>
+                    <option value="Procession">Divine Gramotsavam Path</option>
+                    <option value="Sound System">Electricity & Audio System</option>
+                    <option value="Other">Miscellaneous Seva</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="exp-date">Invoice Bill Date</label>
+                  <input type="date" id="exp-date" class="form-control" required>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="exp-desc">Detailed Description</label>
+                <textarea id="exp-desc" class="form-control" rows="3" placeholder="Specify quantity purchased, vendors, contact details, or committee signatures."></textarea>
+              </div>
+
+              <div class="form-group">
+                <label for="exp-receipt">Upload Physical Bill/Invoice Copy</label>
+                <input type="file" id="exp-receipt" class="form-control-file" accept="image/*">
+              </div>
+
+              <button type="submit" class="btn btn-primary">Publish Expense Transparency Bill</button>
+            </form>
+
+            <hr class="admin-divider">
+
+            <h3>📋 Active Expenses Index</h3>
+            <div class="audit-donations-table-container">
+              <table class="divine-table admin-table">
+                <thead>
+                  <tr>
+                    <th>Title</th>
+                    <th>Category</th>
+                    <th>Amount</th>
+                    <th>Date</th>
+                    <th>Receipt</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="admin-expenses-list-body">
+                  <!-- Loaded dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- TAB D: Rituals & Events -->
+          <div class="admin-tab-content" id="tab-events-audit">
+            <h3>🛕 Schedule Temple Rituals</h3>
+            <p>Add, edit status, or clean up schedule events. Displays on the public vertical timeline.</p>
+            
+            <form id="admin-event-form" class="admin-entry-form">
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="evt-title">Ritual/Event Title</label>
+                  <input type="text" id="evt-title" class="form-control" placeholder="e.g. Maha Mangala Aarathi" required>
+                </div>
+                <div class="form-group">
+                  <label for="evt-date">Schedule Date</label>
+                  <input type="date" id="evt-date" class="form-control" required>
+                </div>
+                <div class="form-group">
+                  <label for="evt-time">Timing</label>
+                  <input type="text" id="evt-time" class="form-control" placeholder="e.g. 06:30 PM" required>
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="evt-desc">Description</label>
+                <textarea id="evt-desc" class="form-control" rows="2" placeholder="Mention holy chariot pathways, special offerings, or specific priests."></textarea>
+              </div>
+              <button type="submit" class="btn btn-primary">Add Event to Timeline</button>
+            </form>
+
+            <hr class="admin-divider">
+
+            <h3>📅 Programmed Events Timeline List</h3>
+            <div class="audit-donations-table-container">
+              <table class="divine-table admin-table">
+                <thead>
+                  <tr>
+                    <th>Ritual Title</th>
+                    <th>Scheduled</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="admin-events-list-body">
+                  <!-- Loaded dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- TAB E: Announcements -->
+          <div class="admin-tab-content" id="tab-announcements-audit">
+            <h3>📢 Broadcast Temple Announcements</h3>
+            <p>Write short notifications or alerts. These stream in real-time across the top ticker on every page view.</p>
+            
+            <form id="admin-announcement-form" class="admin-entry-form">
+              <div class="form-group">
+                <label for="ann-content">Broadcast Alert message</label>
+                <input type="text" id="ann-content" class="form-control" placeholder="e.g. Tomorrow Annadanam starts at 10 AM, welcome all devotees..." required>
+              </div>
+              <button type="submit" class="btn btn-primary">Broadcast Now</button>
+            </form>
+
+            <hr class="admin-divider">
+
+            <h3>📜 Published Broadcast Logs</h3>
+            <div class="audit-donations-table-container">
+              <table class="divine-table admin-table">
+                <thead>
+                  <tr>
+                    <th>Alert Content</th>
+                    <th>Sent</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="admin-announcements-list-body">
+                  <!-- Loaded dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- TAB F: Gallery -->
+          <div class="admin-tab-content" id="tab-gallery-audit">
+            <h3>🖼️ Upload Festival Celebrations Media</h3>
+            <p>Upload photos and devotional videos from grand chariot processions or flower setups for devotees to view in the Masonry Gallery.</p>
+            
+            <form id="admin-gallery-form" class="admin-entry-form" enctype="multipart/form-data">
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="gal-title">Media Caption</label>
+                  <input type="text" id="gal-title" class="form-control" placeholder="e.g. Deeparadhana Decor" required>
+                </div>
+                <div class="form-group">
+                  <label for="gal-file">Photo/Video File</label>
+                  <input type="file" id="gal-file" class="form-control-file" accept="image/*,video/*" required>
+                </div>
+              </div>
+              <button type="submit" class="btn btn-primary">Upload to Public Gallery</button>
+            </form>
+
+            <hr class="admin-divider">
+
+            <h3>📸 Interactive Media Index</h3>
+            <div class="gallery-grid-admin" id="admin-gallery-list-body">
+              <!-- Dynamic media items -->
+            </div>
+          </div>
+
+          <!-- TAB G: Admin Security Settings -->
+          <div class="admin-tab-content" id="tab-admin-profile">
+            <h3>⚙️ Admin Security Profile</h3>
+            <p>Modify display names or update administrative login passwords securely.</p>
+            
+            <form id="admin-profile-form" class="admin-entry-form">
+              <div class="form-group">
+                <label for="prof-name">Display Name / Title</label>
+                <input type="text" id="prof-name" class="form-control" placeholder="e.g. Festival Administrator">
+              </div>
+              <div class="form-group">
+                <label for="prof-pass">New Security Password (Min 6 chars)</label>
+                <input type="password" id="prof-pass" class="form-control" placeholder="Type new password if you wish to change it...">
+              </div>
+              <button type="submit" class="btn btn-primary">Update Admin Security Profile</button>
+            </form>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Divine Golden Footer -->
+  <footer class="app-footer-bar">
+    <p>🕉️ Grama Devatha Ammavari Temple Committee Seva Trust. All Rights Reserved. © 2026 🔱</p>
+    <p class="footer-blessing">"May the holy light of Sri Ammavari guide and protect our village."</p>
+  </footer>
+
+  <!-- ==================================================== -->
+  <!-- DYNAMIC DEVOTIONAL SYSTEM DIALOGS & OVERLAYS         -->
+  <!-- ==================================================== -->
+
+  <!-- 1. POPUP: SCAN AND PAY MODAL -->
+  <div class="modal" id="scan-donate-modal">
+    <div class="modal-content glass-gold">
+      <span class="modal-close" id="close-scan-modal">&times;</span>
+      <h2>🕉️ Temple Seva Devotional Offering</h2>
+      <p>Scan a QR code from any smartphone app (Google Pay, PhonePe, Paytm) to offer your donation directly, then fill out the validation slip below.</p>
+      
+      <!-- QR tabs selectors -->
+      <div class="qr-tabs">
+        <button class="qr-tab-btn active" data-target="qr-gpay">Google Pay</button>
+        <button class="qr-tab-btn" data-target="qr-phonepe">PhonePe</button>
+        <button class="qr-tab-btn" data-target="qr-paytm">Paytm</button>
+        <button class="qr-tab-btn" data-target="qr-bank">Bank Details</button>
+      </div>
+
+      <div class="qr-contents">
+        <div class="qr-item active" id="qr-gpay">
+          <div class="qr-img-wrapper">
+            <svg class="qr-svg-placeholder" viewBox="0 0 100 100">
+              <rect x="10" y="10" width="80" height="80" fill="white" stroke="gold" stroke-width="2"/>
+              <!-- A beautiful abstract QR structure in SVG for maximum visual premium -->
+              <rect x="20" y="20" width="20" height="20" fill="#c0392b"/>
+              <rect x="60" y="20" width="20" height="20" fill="#c0392b"/>
+              <rect x="20" y="60" width="20" height="20" fill="#c0392b"/>
+              <rect x="30" y="30" width="40" height="40" fill="#e67e22" opacity="0.4"/>
+              <rect x="45" y="45" width="10" height="10" fill="#d4af37"/>
+              <text x="50" y="52" font-family="Montserrat" font-size="6" font-weight="bold" fill="white" text-anchor="middle">GPAY</text>
+            </svg>
+            <div class="qr-branding">Google Pay QR</div>
+          </div>
+          <div class="upi-info-badge">
+            <p><strong>UPI ID:</strong> <span id="gpay-upi-val">sriammavari@okaxis</span></p>
+            <p><strong>Phone:</strong> <span id="gpay-phone-val">9876543210</span></p>
+          </div>
+        </div>
+
+        <div class="qr-item" id="qr-phonepe">
+          <div class="qr-img-wrapper">
+            <svg class="qr-svg-placeholder" viewBox="0 0 100 100">
+              <rect x="10" y="10" width="80" height="80" fill="white" stroke="gold" stroke-width="2"/>
+              <rect x="20" y="20" width="20" height="20" fill="#5F259F"/>
+              <rect x="60" y="20" width="20" height="20" fill="#5F259F"/>
+              <rect x="20" y="60" width="20" height="20" fill="#5F259F"/>
+              <rect x="30" y="30" width="40" height="40" fill="#e67e22" opacity="0.4"/>
+              <rect x="45" y="45" width="10" height="10" fill="#d4af37"/>
+              <text x="50" y="52" font-family="Montserrat" font-size="4" font-weight="900" fill="white" text-anchor="middle">PHONEPE</text>
+            </svg>
+            <div class="qr-branding">PhonePe QR</div>
+          </div>
+          <div class="upi-info-badge">
+            <p><strong>UPI ID:</strong> <span id="phonepe-upi-val">sriammavari@ybl</span></p>
+            <p><strong>Phone:</strong> <span id="phonepe-phone-val">9876543210</span></p>
+          </div>
+        </div>
+
+        <div class="qr-item" id="qr-paytm">
+          <div class="qr-img-wrapper">
+            <svg class="qr-svg-placeholder" viewBox="0 0 100 100">
+              <rect x="10" y="10" width="80" height="80" fill="white" stroke="gold" stroke-width="2"/>
+              <rect x="20" y="20" width="20" height="20" fill="#00baf2"/>
+              <rect x="60" y="20" width="20" height="20" fill="#00baf2"/>
+              <rect x="20" y="60" width="20" height="20" fill="#00baf2"/>
+              <rect x="30" y="30" width="40" height="40" fill="#e67e22" opacity="0.4"/>
+              <rect x="45" y="45" width="10" height="10" fill="#d4af37"/>
+              <text x="50" y="52" font-family="Montserrat" font-size="5.5" font-weight="900" fill="white" text-anchor="middle">PAYTM</text>
+            </svg>
+            <div class="qr-branding">Paytm QR</div>
+          </div>
+          <div class="upi-info-badge">
+            <p><strong>UPI ID:</strong> <span id="paytm-upi-val">9876543210@paytm</span></p>
+            <p><strong>Phone:</strong> <span id="paytm-phone-val">9876543210</span></p>
+          </div>
+        </div>
+
+        <div class="qr-item" id="qr-bank">
+          <div class="bank-details-modal">
+            <h4>🏦 Direct Bank Transfer details</h4>
+            <div class="bank-ledger">
+              <p><strong>Account Holder:</strong> <span id="bank-holder-val">Sri Ammavari Utsavam Committee</span></p>
+              <p><strong>Bank Name:</strong> <span id="bank-name-val">State Bank of India</span></p>
+              <p><strong>Account Number:</strong> <span id="bank-account-val">30489274812</span></p>
+              <p><strong>IFSC Code:</strong> <span id="bank-ifsc-val">SBIN0004812</span></p>
+              <p><strong>Branch:</strong> <span id="bank-branch-val">Grama Devatha Temple Branch</span></p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <hr class="modal-divider">
+
+      <!-- Offering verification form -->
+      <h3>📝 Step 2: Upload Offering Validation Slip</h3>
+      <p class="modal-form-help">Enter your name, donation sum, devotional wishes, and attach a screenshot of your successful UPI transfer so our administrators can verify and write your name on the public scroll.</p>
+      
+      <form id="public-donation-form" enctype="multipart/form-data">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="don-name">Devotee Name</label>
+            <input type="text" id="don-name" class="form-control" placeholder="e.g. Anil Kumar & Family" required>
+          </div>
+          <div class="form-group">
+            <label for="don-phone">WhatsApp/Phone No</label>
+            <input type="tel" id="don-phone" class="form-control" placeholder="10 digit number" required>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="don-amount">Offering Amount (₹)</label>
+            <input type="number" id="don-amount" class="form-control" placeholder="e.g. 5001" min="1" required>
+          </div>
+          <div class="form-group">
+            <label for="don-screenshot">Upload Payment Screenshot Proof</label>
+            <input type="file" id="don-screenshot" class="form-control-file" accept="image/*" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="don-msg">Devotional Wishes / Prayers / Family Blessings</label>
+          <input type="text" id="don-msg" class="form-control" placeholder="e.g. May Sri Ammavari protect our village. Jai Ammavari!">
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-full-width">Submit Devotional Verification Proof</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 2. POPUP: DIVINE BLESSINGS POPUP (AFTER SUCCESSFUL UPLOAD) -->
+  <div class="modal" id="blessings-modal">
+    <div class="modal-content glass-gold text-center blessing-modal-card">
+      <span class="modal-close" id="close-blessings-modal">&times;</span>
+      <h1 class="divine-symbol">🔱</h1>
+      <h2 class="shloka">"సర్వమంగళ మాంగళ్యే శివే సర్వార్థ సాధికే<br>శరణ్యే త్ర్యంబకే దేవి నారాయణి నమోస్తుతే"</h2>
+      <h2 class="blessing-title">Dhanya Sevadharu!</h2>
+      <p class="blessing-body">Your donation proof has been successfully submitted to the temple administrative committee. Once audited, your contribution will shine on the Donor Wall of Honor!</p>
+      
+      <div class="diya-decor text-center">
+        <div class="diya-glow inline">🕯️</div>
+        <div class="diya-separator-short inline"></div>
+        <div class="diya-glow inline">🕯️</div>
+      </div>
+      
+      <p class="blessing-footer">May Sri Ammavari shower eternal peace, health, and prosperity upon you and your family!</p>
+      
+      <button class="btn btn-primary" id="blessings-close-btn">Receive Goddess Blessings</button>
+    </div>
+  </div>
+
+  <!-- 3. POPUP: RECEIPTS LIGHTBOX MODAL -->
+  <div class="modal" id="receipt-lightbox">
+    <div class="modal-content glass receipts-lightbox-card">
+      <span class="modal-close" id="close-lightbox">&times;</span>
+      <h3 id="lightbox-title">Physical Bill Invoice Receipt Audit</h3>
+      <div class="lightbox-img-wrapper">
+        <img id="lightbox-img" src="" alt="Invoice Bill Audit">
+      </div>
+      <p class="lightbox-desc" id="lightbox-desc">No receipt file uploaded.</p>
+    </div>
+  </div>
+
+  <!-- Main client scripts dependencies -->
+  <script src="animations.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
