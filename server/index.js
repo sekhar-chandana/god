@@ -1,466 +1,414 @@
+require('dotenv').config();
+
 const express = require('express');
-const cors = require('cors');
-const path = require('path');
-const fs = require('fs');
-const multer = require('multer');
+const cors    = require('cors');
+const path    = require('path');
+const multer  = require('multer');
 
-const db = require('./database');
+const { connectDB } = require('./database');
 const { generateToken, authenticateAdmin, comparePassword, hashPassword } = require('./auth');
+const { cloudinary, donationStorage, expenseStorage, galleryStorage } = require('./cloudinary');
 
-const app = express();
+const User         = require('./models/User');
+const Donation     = require('./models/Donation');
+const Expense      = require('./models/Expense');
+const Event        = require('./models/Event');
+const Announcement = require('./models/Announcement');
+const Gallery      = require('./models/Gallery');
+const QrConfig     = require('./models/QrConfig');
+
+const app  = express();
 const PORT = process.env.PORT || 5000;
 
-// Enable CORS and JSON parsing
 app.use(cors());
 app.use(express.json());
-
-// Ensure upload folders exist
-const UPLOADS_DIR = path.join(__dirname, '..', 'uploads');
-const UPLOADS_DONATIONS = path.join(UPLOADS_DIR, 'donations');
-const UPLOADS_EXPENSES = path.join(UPLOADS_DIR, 'expenses');
-const UPLOADS_GALLERY = path.join(UPLOADS_DIR, 'gallery');
-
-[UPLOADS_DIR, UPLOADS_DONATIONS, UPLOADS_EXPENSES, UPLOADS_GALLERY].forEach(dir => {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-});
-
-// Configure static file serving
 app.use(express.static(path.join(__dirname, '..', 'client')));
-app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
+
+// Multer instances backed by Cloudinary storage
+const uploadDonation = multer({ storage: donationStorage, limits: { fileSize: 10 * 1024 * 1024 } });
+const uploadExpense  = multer({ storage: expenseStorage,  limits: { fileSize: 10 * 1024 * 1024 } });
+const uploadGallery  = multer({ storage: galleryStorage,  limits: { fileSize: 100 * 1024 * 1024 } });
 
 // ----------------------------------------------------
-// MULTER FILE UPLOAD CONFIGURATIONS
-// ----------------------------------------------------
-const storageDonations = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, UPLOADS_DONATIONS),
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, `donation-${Date.now()}${ext}`);
-  }
-});
-const uploadDonation = multer({ storage: storageDonations });
-
-const storageExpenses = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, UPLOADS_EXPENSES),
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, `expense-${Date.now()}${ext}`);
-  }
-});
-const uploadExpense = multer({ storage: storageExpenses });
-
-const storageGallery = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, UPLOADS_GALLERY),
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, `gallery-${Date.now()}${ext}`);
-  }
-});
-const uploadGallery = multer({ storage: storageGallery });
-
-// ----------------------------------------------------
-// PUBLIC ROUTING (Public Dashboard API)
+// PUBLIC ROUTES
 // ----------------------------------------------------
 
-// Admin authentication
-app.post('/api/auth/login', (req, res) => {
-  const { username, password } = req.body;
-  if (!username || !password) {
-    return res.status(400).json({ error: "Please enter your username and password." });
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    if (!username || !password)
+      return res.status(400).json({ error: 'Please enter your username and password.' });
+
+    const user = await User.findOne({ username: username.toLowerCase() });
+    if (!user || !comparePassword(password, user.passwordHash))
+      return res.status(401).json({ error: 'Invalid username or password. Please try again.' });
+
+    const token = generateToken(user);
+    res.json({ token, user: { id: user.id, username: user.username, name: user.name, role: user.role } });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error during login.' });
   }
-
-  const users = db.getCollection('users');
-  const user = users.find(u => u.username.toLowerCase() === username.toLowerCase());
-
-  if (!user || !comparePassword(password, user.passwordHash)) {
-    return res.status(401).json({ error: "Invalid username or password. Please try again." });
-  }
-
-  const token = generateToken(user);
-  res.json({
-    token,
-    user: {
-      id: user.id,
-      username: user.username,
-      name: user.name,
-      role: user.role
-    }
-  });
 });
 
-// Admin verification status check
 app.get('/api/auth/verify', authenticateAdmin, (req, res) => {
   res.json({ valid: true, user: req.user });
 });
 
-// Get active payment methods & QR details
-app.get('/api/qr', (req, res) => {
-  res.json(db.getQrCodes());
+app.get('/api/qr', async (req, res) => {
+  try {
+    const config = await QrConfig.findOne();
+    res.json(config || {});
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to load payment info.' });
+  }
 });
 
-// Submit a new donation with payment screenshot
-app.post('/api/donations', uploadDonation.single('screenshot'), (req, res) => {
+// Submit donation with payment screenshot → uploaded to Cloudinary
+app.post('/api/donations', uploadDonation.single('screenshot'), async (req, res) => {
   try {
     const { donorName, phone, amount, message } = req.body;
-    
-    if (!donorName || !phone || !amount) {
-      return res.status(400).json({ error: "Name, Phone Number, and Amount are required fields." });
-    }
+    if (!donorName || !phone || !amount)
+      return res.status(400).json({ error: 'Name, Phone Number, and Amount are required fields.' });
 
     const numericAmount = parseFloat(amount);
-    if (isNaN(numericAmount) || numericAmount <= 0) {
-      return res.status(400).json({ error: "Amount must be a valid positive number." });
-    }
+    if (isNaN(numericAmount) || numericAmount <= 0)
+      return res.status(400).json({ error: 'Amount must be a valid positive number.' });
 
-    const donationItem = {
-      donorName: donorName.trim(),
-      phone: phone.trim(),
-      amount: numericAmount,
-      message: (message || "").trim(),
-      screenshotPath: req.file ? `/uploads/donations/${req.file.filename}` : "",
-      status: "pending", // Requires admin validation
-      timestamp: new Date().toISOString()
-    };
-
-    const inserted = db.insert('donations', donationItem);
-    res.status(201).json({
-      message: "Donation submitted successfully! It will appear on the donor wall after admin verification.",
-      donation: inserted
+    const donation = await Donation.create({
+      donorName:          donorName.trim(),
+      phone:              phone.trim(),
+      amount:             numericAmount,
+      message:            (message || '').trim(),
+      screenshotUrl:      req.file ? req.file.path     : '',
+      screenshotPublicId: req.file ? req.file.filename : '',
+      status:             'pending',
+      timestamp:          new Date()
     });
-  } catch (error) {
-    console.error("Donation submission error:", error);
-    res.status(500).json({ error: "Server error during donation processing." });
+
+    res.status(201).json({
+      message: 'Donation submitted successfully! It will appear on the donor wall after admin verification.',
+      donation
+    });
+  } catch (err) {
+    console.error('Donation submission error:', err);
+    res.status(500).json({ error: 'Server error during donation processing.' });
   }
 });
 
-// Get all *approved* donations for the public scroll-wall
-app.get('/api/donations', (req, res) => {
-  const donations = db.getCollection('donations');
-  const approved = donations
-    .filter(d => d.status === 'approved')
-    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-  res.json(approved);
+app.get('/api/donations', async (req, res) => {
+  try {
+    const donations = await Donation.find({ status: 'approved' }).sort({ timestamp: -1 });
+    res.json(donations);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to load donations.' });
+  }
 });
 
-// Get list of itemized expenses
-app.get('/api/expenses', (req, res) => {
-  const expenses = db.getCollection('expenses');
-  const sorted = expenses.sort((a, b) => new Date(b.date) - new Date(a.date));
-  res.json(sorted);
+app.get('/api/expenses', async (req, res) => {
+  try {
+    const expenses = await Expense.find().sort({ date: -1 });
+    res.json(expenses);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to load expenses.' });
+  }
 });
 
-// Get upcoming and current events schedules
-app.get('/api/events', (req, res) => {
-  const events = db.getCollection('events');
-  const sorted = events.sort((a, b) => new Date(a.date + ' ' + a.time) - new Date(b.date + ' ' + b.time));
-  res.json(sorted);
+app.get('/api/events', async (req, res) => {
+  try {
+    const events = await Event.find().sort({ date: 1, time: 1 });
+    res.json(events);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to load events.' });
+  }
 });
 
-// Get active banners & announcements
-app.get('/api/announcements', (req, res) => {
-  const list = db.getCollection('announcements');
-  const active = list.filter(a => a.isActive !== false).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-  res.json(active);
+app.get('/api/announcements', async (req, res) => {
+  try {
+    const list = await Announcement.find({ isActive: true }).sort({ timestamp: -1 });
+    res.json(list);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to load announcements.' });
+  }
 });
 
-// Get photos and video celebrations gallery
-app.get('/api/gallery', (req, res) => {
-  const list = db.getCollection('gallery');
-  const sorted = list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  res.json(sorted);
+app.get('/api/gallery', async (req, res) => {
+  try {
+    const list = await Gallery.find().sort({ createdAt: -1 });
+    res.json(list);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to load gallery.' });
+  }
 });
 
-// Aggregate financial metrics (Goal, Total Collections, Balances, Top Donors)
-app.get('/api/stats', (req, res) => {
-  const donations = db.getCollection('donations');
-  const expenses = db.getCollection('expenses');
+app.get('/api/stats', async (req, res) => {
+  try {
+    const [donations, expenses] = await Promise.all([
+      Donation.find({ status: 'approved' }),
+      Expense.find()
+    ]);
 
-  // Sum approved funds
-  const approvedDonations = donations.filter(d => d.status === 'approved');
-  const totalCollected = approvedDonations.reduce((sum, d) => sum + d.amount, 0);
+    const totalCollected = donations.reduce((sum, d) => sum + d.amount, 0);
+    const totalSpent     = expenses.reduce((sum, e) => sum + e.amount, 0);
 
-  // Sum active expenses
-  const totalSpent = expenses.reduce((sum, e) => sum + e.amount, 0);
+    const donorMap = {};
+    donations.forEach(d => {
+      const key = d.donorName.trim();
+      donorMap[key] = (donorMap[key] || 0) + d.amount;
+    });
 
-  const remainingBalance = totalCollected - totalSpent;
+    const topDonors = Object.keys(donorMap)
+      .map(name => ({ name, totalAmount: donorMap[name] }))
+      .sort((a, b) => b.totalAmount - a.totalAmount)
+      .slice(0, 5);
 
-  // Compile top donors ranking
-  const donorMap = {};
-  approvedDonations.forEach(d => {
-    const key = d.donorName.trim();
-    donorMap[key] = (donorMap[key] || 0) + d.amount;
-  });
-
-  const topDonors = Object.keys(donorMap)
-    .map(name => ({ name, totalAmount: donorMap[name] }))
-    .sort((a, b) => b.totalAmount - a.totalAmount)
-    .slice(0, 5);
-
-  res.json({
-    goalAmount: 200000, // Target goal of ₹2,00,000 for the festival
-    totalCollected,
-    totalSpent,
-    remainingBalance,
-    topDonors,
-    donationsCount: approvedDonations.length,
-    expensesCount: expenses.length
-  });
+    res.json({
+      goalAmount:       parseInt(process.env.GOAL_AMOUNT) || 200000,
+      totalCollected,
+      totalSpent,
+      remainingBalance: totalCollected - totalSpent,
+      topDonors,
+      donationsCount:   donations.length,
+      expensesCount:    expenses.length
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to calculate stats.' });
+  }
 });
 
 // ----------------------------------------------------
-// SECURE ADMIN CONTROL ROUTES (JWT GUARDED)
+// ADMIN ROUTES (JWT GUARDED)
 // ----------------------------------------------------
 
-// Admin get ALL donations (including pending/rejected proofs)
-app.get('/api/admin/donations', authenticateAdmin, (req, res) => {
-  const donations = db.getCollection('donations');
-  const sorted = donations.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-  res.json(sorted);
+app.get('/api/admin/donations', authenticateAdmin, async (req, res) => {
+  try {
+    const donations = await Donation.find().sort({ timestamp: -1 });
+    res.json(donations);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to load donations.' });
+  }
 });
 
-// Admin change donation status (approve or reject)
-app.post('/api/admin/donations/:id/status', authenticateAdmin, (req, res) => {
-  const { id } = req.params;
-  const { status } = req.body; // 'approved' or 'rejected'
+app.post('/api/admin/donations/:id/status', authenticateAdmin, async (req, res) => {
+  try {
+    const { status } = req.body;
+    if (!['approved', 'rejected', 'pending'].includes(status))
+      return res.status(400).json({ error: "Invalid status. Must be 'approved', 'rejected', or 'pending'." });
 
-  if (!['approved', 'rejected', 'pending'].includes(status)) {
-    return res.status(400).json({ error: "Invalid status value. Must be 'approved', 'rejected' or 'pending'." });
+    const donation = await Donation.findByIdAndUpdate(req.params.id, { status }, { new: true });
+    if (!donation) return res.status(404).json({ error: 'Donation record not found.' });
+
+    res.json({ message: `Donation ${status} successfully!`, donation });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update donation status.' });
   }
-
-  const updated = db.update('donations', id, { status });
-  if (!updated) {
-    return res.status(404).json({ error: "Donation record not found." });
-  }
-
-  res.json({ message: `Donation was successfully ${status}!`, donation: updated });
 });
 
-// Admin edit UPI details or toggle gateways
-app.post('/api/admin/qr', authenticateAdmin, (req, res) => {
-  const updates = req.body;
-  const updatedCodes = db.updateQrCodes(updates);
-  res.json({ message: "Payment information updated successfully.", qrCodes: updatedCodes });
+// Update UPI / bank details (replaces entire QrConfig document)
+app.post('/api/admin/qr', authenticateAdmin, async (req, res) => {
+  try {
+    const config = await QrConfig.findOneAndUpdate({}, req.body, { new: true, upsert: true });
+    res.json({ message: 'Payment information updated successfully.', qrCodes: config });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update QR config.' });
+  }
 });
 
-// Admin add a new festival expense with bill proof upload
-app.post('/api/admin/expenses', authenticateAdmin, uploadExpense.single('receipt'), (req, res) => {
-  const { title, amount, category, description, date } = req.body;
+// Add expense with optional receipt image → Cloudinary
+app.post('/api/admin/expenses', authenticateAdmin, uploadExpense.single('receipt'), async (req, res) => {
+  try {
+    const { title, amount, category, description, date } = req.body;
+    if (!title || !amount || !category || !date)
+      return res.status(400).json({ error: 'Title, Amount, Category, and Date are required.' });
 
-  if (!title || !amount || !category || !date) {
-    return res.status(400).json({ error: "Title, Amount, Category, and Date are required." });
+    const numericAmount = parseFloat(amount);
+    if (isNaN(numericAmount) || numericAmount <= 0)
+      return res.status(400).json({ error: 'Amount must be a positive number.' });
+
+    const expense = await Expense.create({
+      title:           title.trim(),
+      amount:          numericAmount,
+      category:        category.trim(),
+      description:     (description || '').trim(),
+      receiptUrl:      req.file ? req.file.path     : '',
+      receiptPublicId: req.file ? req.file.filename : '',
+      date
+    });
+
+    res.status(201).json({ message: 'Expense recorded successfully.', expense });
+  } catch (err) {
+    console.error('Expense save error:', err);
+    res.status(500).json({ error: 'Failed to save expense.' });
   }
-
-  const numericAmount = parseFloat(amount);
-  if (isNaN(numericAmount) || numericAmount <= 0) {
-    return res.status(400).json({ error: "Amount must be a positive number." });
-  }
-
-  const expenseItem = {
-    title: title.trim(),
-    amount: numericAmount,
-    category: category.trim(),
-    description: (description || "").trim(),
-    receiptPath: req.file ? `/uploads/expenses/${req.file.filename}` : "",
-    date: date
-  };
-
-  const inserted = db.insert('expenses', expenseItem);
-  res.status(201).json({ message: "Expense recorded successfully.", expense: inserted });
 });
 
-// Admin delete expense
-app.delete('/api/admin/expenses/:id', authenticateAdmin, (req, res) => {
-  const { id } = req.params;
-  const expense = db.findById('expenses', id);
+// Delete expense and remove its receipt from Cloudinary
+app.delete('/api/admin/expenses/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const expense = await Expense.findById(req.params.id);
+    if (!expense) return res.status(404).json({ error: 'Expense record not found.' });
 
-  if (!expense) {
-    return res.status(404).json({ error: "Expense record not found." });
-  }
-
-  // Delete matching bill scan if it exists locally
-  if (expense.receiptPath && expense.receiptPath.startsWith('/uploads/')) {
-    const fullPath = path.join(__dirname, '..', expense.receiptPath);
-    if (fs.existsSync(fullPath)) {
-      try {
-        fs.unlinkSync(fullPath);
-      } catch (err) {
-        console.error("Error deleting expense receipt file:", err);
-      }
+    if (expense.receiptPublicId) {
+      await cloudinary.uploader.destroy(expense.receiptPublicId).catch(console.error);
     }
-  }
 
-  db.delete('expenses', id);
-  res.json({ message: "Expense record deleted successfully." });
+    await expense.deleteOne();
+    res.json({ message: 'Expense record deleted successfully.' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete expense.' });
+  }
 });
 
-// Admin manage festival timeline events (Create, Edit, Delete)
-app.post('/api/admin/events', authenticateAdmin, (req, res) => {
-  const { title, date, time, description } = req.body;
+app.post('/api/admin/events', authenticateAdmin, async (req, res) => {
+  try {
+    const { title, date, time, description } = req.body;
+    if (!title || !date || !time)
+      return res.status(400).json({ error: 'Title, Date, and Time are required fields.' });
 
-  if (!title || !date || !time) {
-    return res.status(400).json({ error: "Title, Date, and Time are required fields." });
+    const event = await Event.create({
+      title:       title.trim(),
+      date,
+      time:        time.trim(),
+      description: (description || '').trim(),
+      status:      'upcoming'
+    });
+
+    res.status(201).json({ message: 'Event added to timeline schedule.', event });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to add event.' });
   }
-
-  const eventItem = {
-    title: title.trim(),
-    date: date,
-    time: time.trim(),
-    description: (description || "").trim(),
-    status: "upcoming"
-  };
-
-  const inserted = db.insert('events', eventItem);
-  res.status(201).json({ message: "Event added to timeline schedule.", event: inserted });
 });
 
-app.put('/api/admin/events/:id', authenticateAdmin, (req, res) => {
-  const { id } = req.params;
-  const updates = req.body;
-
-  const updated = db.update('events', id, updates);
-  if (!updated) {
-    return res.status(404).json({ error: "Event record not found." });
+app.put('/api/admin/events/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const event = await Event.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (!event) return res.status(404).json({ error: 'Event record not found.' });
+    res.json({ message: 'Event updated successfully.', event });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update event.' });
   }
-
-  res.json({ message: "Event updated successfully.", event: updated });
 });
 
-app.delete('/api/admin/events/:id', authenticateAdmin, (req, res) => {
-  const { id } = req.params;
-  const deleted = db.delete('events', id);
-  
-  if (!deleted) {
-    return res.status(404).json({ error: "Event record not found." });
+app.delete('/api/admin/events/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const event = await Event.findByIdAndDelete(req.params.id);
+    if (!event) return res.status(404).json({ error: 'Event record not found.' });
+    res.json({ message: 'Event deleted from timeline.' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete event.' });
   }
-
-  res.json({ message: "Event deleted from timeline." });
 });
 
-// Admin Announcements management (Add, Delete)
-app.post('/api/admin/announcements', authenticateAdmin, (req, res) => {
-  const { content } = req.body;
+app.post('/api/admin/announcements', authenticateAdmin, async (req, res) => {
+  try {
+    const { content } = req.body;
+    if (!content || !content.trim())
+      return res.status(400).json({ error: 'Announcement text cannot be empty.' });
 
-  if (!content || content.trim() === "") {
-    return res.status(400).json({ error: "Announcement text cannot be empty." });
+    const announcement = await Announcement.create({
+      content:   content.trim(),
+      timestamp: new Date(),
+      isActive:  true
+    });
+
+    res.status(201).json({ message: 'Announcement published live.', announcement });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to publish announcement.' });
   }
-
-  const annItem = {
-    content: content.trim(),
-    timestamp: new Date().toISOString(),
-    isActive: true
-  };
-
-  const inserted = db.insert('announcements', annItem);
-  res.status(201).json({ message: "Announcement published live.", announcement: inserted });
 });
 
-app.delete('/api/admin/announcements/:id', authenticateAdmin, (req, res) => {
-  const { id } = req.params;
-  const deleted = db.delete('announcements', id);
-
-  if (!deleted) {
-    return res.status(404).json({ error: "Announcement not found." });
+app.delete('/api/admin/announcements/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const ann = await Announcement.findByIdAndDelete(req.params.id);
+    if (!ann) return res.status(404).json({ error: 'Announcement not found.' });
+    res.json({ message: 'Announcement removed.' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete announcement.' });
   }
-
-  res.json({ message: "Announcement removed." });
 });
 
-// Admin Gallery management (Upload image/video, Delete)
-app.post('/api/admin/gallery', authenticateAdmin, uploadGallery.single('media'), (req, res) => {
-  const { title } = req.body;
+// Upload gallery image/video → Cloudinary
+app.post('/api/admin/gallery', authenticateAdmin, uploadGallery.single('media'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'Please upload a photo or video file.' });
 
-  if (!req.file) {
-    return res.status(400).json({ error: "Please upload a photo or video file." });
+    const type = req.file.mimetype.startsWith('video/') ? 'video' : 'image';
+
+    const item = await Gallery.create({
+      title:         ((req.body.title || '').trim()) || 'Utsavam Highlight',
+      mediaUrl:      req.file.path,
+      mediaPublicId: req.file.filename,
+      type
+    });
+
+    res.status(201).json({ message: 'Media uploaded to festival gallery.', item });
+  } catch (err) {
+    console.error('Gallery upload error:', err);
+    res.status(500).json({ error: 'Gallery upload failed.' });
   }
-
-  const mime = req.file.mimetype;
-  let type = "image";
-  if (mime.startsWith('video/')) {
-    type = "video";
-  }
-
-  const galleryItem = {
-    title: (title || "").trim() || "Utsavam Highlight",
-    path: `/uploads/gallery/${req.file.filename}`,
-    type: type,
-    createdAt: new Date().toISOString()
-  };
-
-  const inserted = db.insert('gallery', galleryItem);
-  res.status(201).json({ message: "Media uploaded to festival gallery.", item: inserted });
 });
 
-app.delete('/api/admin/gallery/:id', authenticateAdmin, (req, res) => {
-  const { id } = req.params;
-  const item = db.findById('gallery', id);
+// Delete gallery item and remove media from Cloudinary
+app.delete('/api/admin/gallery/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const item = await Gallery.findById(req.params.id);
+    if (!item) return res.status(404).json({ error: 'Gallery item not found.' });
 
-  if (!item) {
-    return res.status(404).json({ error: "Gallery item not found." });
+    await cloudinary.uploader.destroy(item.mediaPublicId, {
+      resource_type: item.type === 'video' ? 'video' : 'image'
+    }).catch(console.error);
+
+    await item.deleteOne();
+    res.json({ message: 'Gallery item removed successfully.' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete gallery item.' });
   }
+});
 
-  // Delete media file from uploads
-  if (item.path && item.path.startsWith('/uploads/')) {
-    const fullPath = path.join(__dirname, '..', item.path);
-    if (fs.existsSync(fullPath)) {
-      try {
-        fs.unlinkSync(fullPath);
-      } catch (err) {
-        console.error("Error deleting gallery media file:", err);
-      }
+app.post('/api/admin/profile', authenticateAdmin, async (req, res) => {
+  try {
+    const { name, newPassword } = req.body;
+    const updates = {};
+
+    if (name && name.trim()) updates.name = name.trim();
+
+    if (newPassword) {
+      if (newPassword.trim().length < 6)
+        return res.status(400).json({ error: 'New password must be at least 6 characters long.' });
+      updates.passwordHash = hashPassword(newPassword);
     }
-  }
 
-  db.delete('gallery', id);
-  res.json({ message: "Gallery item removed successfully." });
+    if (Object.keys(updates).length === 0)
+      return res.status(400).json({ error: 'No profile updates provided.' });
+
+    const user = await User.findByIdAndUpdate(req.user.id, updates, { new: true });
+    res.json({
+      message: 'Admin profile updated successfully.',
+      user: { id: user.id, username: user.username, name: user.name, role: user.role }
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update profile.' });
+  }
 });
 
-// Admin update security profile credentials
-app.post('/api/admin/profile', authenticateAdmin, (req, res) => {
-  const { name, newPassword } = req.body;
-  const adminId = req.user.id;
-
-  const updates = {};
-  if (name && name.trim() !== "") {
-    updates.name = name.trim();
-  }
-
-  if (newPassword && newPassword.trim().length >= 6) {
-    updates.passwordHash = hashPassword(newPassword);
-  } else if (newPassword) {
-    return res.status(400).json({ error: "New password must be at least 6 characters long." });
-  }
-
-  if (Object.keys(updates).length === 0) {
-    return res.status(400).json({ error: "No profile updates provided." });
-  }
-
-  const updated = db.update('users', adminId, updates);
-  res.json({
-    message: "Admin profile updated successfully.",
-    user: {
-      id: updated.id,
-      username: updated.username,
-      name: updated.name,
-      role: updated.role
-    }
-  });
-});
-
-// Wildcard router: Fallback to single page client interface
+// Wildcard: serve SPA
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'client', 'index.html'));
 });
 
-// Start the Express HTTP listener
-app.listen(PORT, () => {
-  console.log(`========================================`);
-  console.log(`  Sri Ammavari Utsavam Server Live!     `);
-  console.log(`  Running on: http://localhost:${PORT}   `);
-  console.log(`  Local Database: data/db.json           `);
-  console.log(`  Default Admin Creds:                   `);
-  console.log(`    User: admin                          `);
-  console.log(`    Pass: AmmavariSeva2026!              `);
-  console.log(`========================================`);
-});
+// Connect to MongoDB first, then start HTTP server
+connectDB()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log('========================================');
+      console.log('  Sri Ammavari Utsavam Server Live!     ');
+      console.log(`  Running on: http://localhost:${PORT}  `);
+      console.log('  Database : MongoDB Atlas              ');
+      console.log('  Media    : Cloudinary                 ');
+      console.log('  Admin    : admin / AmmavariSeva2026!  ');
+      console.log('========================================');
+    });
+  })
+  .catch(err => {
+    console.error('MongoDB connection failed:', err.message);
+    process.exit(1);
+  });

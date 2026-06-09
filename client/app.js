@@ -363,7 +363,7 @@ const App = {
             </td>
             <td>${new Date(e.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
             <td>
-              ${e.receiptPath ? `<button class="receipt-btn" onclick="App.openLightbox('${e.receiptPath}', '${e.title}')">🔍 View Bill</button>` : `<span style="font-size: 0.7rem; opacity: 0.5;">No bill attached</span>`}
+              ${e.receiptUrl ? `<button class="receipt-btn" onclick="App.openLightbox('${e.receiptUrl}', '${e.title}')">🔍 View Bill</button>` : `<span style="font-size: 0.7rem; opacity: 0.5;">No bill attached</span>`}
             </td>
           </tr>
         `).join('');
@@ -493,8 +493,8 @@ const App = {
       masonry.innerHTML = list.map(item => {
         if (item.type === 'video') {
           return `
-            <div class="gallery-card" onclick="App.openLightbox('${item.path}', '${item.title}')">
-              <video src="${item.path}" muted loop playsinline></video>
+            <div class="gallery-card" onclick="App.openLightbox('${item.mediaUrl}', '${item.title}')">
+              <video src="${item.mediaUrl}" muted loop playsinline></video>
               <div class="video-play-indicator">🎬</div>
               <div class="gallery-card-overlay">
                 <h4>${item.title}</h4>
@@ -504,8 +504,8 @@ const App = {
           `;
         } else {
           return `
-            <div class="gallery-card" onclick="App.openLightbox('${item.path}', '${item.title}')">
-              <img src="${item.path}" alt="${item.title}" loading="lazy">
+            <div class="gallery-card" onclick="App.openLightbox('${item.mediaUrl}', '${item.title}')">
+              <img src="${item.mediaUrl}" alt="${item.title}" loading="lazy">
               <div class="gallery-card-overlay">
                 <h4>${item.title}</h4>
                 <span>📸 Holy Photo memory</span>
@@ -830,7 +830,7 @@ const App = {
             <td><span class="amount-badge">₹${d.amount.toLocaleString('en-IN')}</span></td>
             <td><span style="font-size: 0.7rem; font-style: italic;">${d.message ? `"${d.message}"` : 'None'}</span></td>
             <td>
-              ${d.screenshotPath ? `<img class="admin-screenshot-thumb" src="${d.screenshotPath}" onclick="App.openLightbox('${d.screenshotPath}', '${d.donorName} Proof')" title="Inspect payment screenshot">` : '<span style="font-size:0.65rem; opacity:0.5;">No proof</span>'}
+              ${d.screenshotUrl ? `<img class="admin-screenshot-thumb" src="${d.screenshotUrl}" onclick="App.openLightbox('${d.screenshotUrl}', '${d.donorName} Proof')" title="Inspect payment screenshot">` : '<span style="font-size:0.65rem; opacity:0.5;">No proof</span>'}
             </td>
             <td>${statusBadge}</td>
             <td>${actionBtns}</td>
@@ -981,7 +981,7 @@ const App = {
           <td><span class="amount-badge">₹${e.amount.toLocaleString('en-IN')}</span></td>
           <td>${e.date}</td>
           <td>
-            ${e.receiptPath ? `<button class="receipt-btn" onclick="App.openLightbox('${e.receiptPath}', '${e.title}')">Inspect Bill</button>` : 'None'}
+            ${e.receiptUrl ? `<button class="receipt-btn" onclick="App.openLightbox('${e.receiptUrl}', '${e.title}')">Inspect Bill</button>` : 'None'}
           </td>
           <td>
             <button class="btn btn-sm btn-danger" onclick="App.deleteExpense('${e.id}')">Delete</button>
@@ -1274,7 +1274,7 @@ const App = {
 
       wrapper.innerHTML = list.map(item => `
         <div class="form-card-glass" style="display: flex; gap:12px; align-items:center;">
-          ${item.type === 'video' ? `<video src="${item.path}" style="width:50px; height:50px; object-fit:cover;" muted></video>` : `<img src="${item.path}" style="width:50px; height:50px; object-fit:cover; border-radius:4px;">`}
+          ${item.type === 'video' ? `<video src="${item.mediaUrl}" style="width:50px; height:50px; object-fit:cover;" muted></video>` : `<img src="${item.mediaUrl}" style="width:50px; height:50px; object-fit:cover; border-radius:4px;">`}
           <div style="flex:1; overflow:hidden;">
             <h5 style="white-space:nowrap; text-overflow:ellipsis; overflow:hidden; font-size:0.8rem; margin:0;">${item.title}</h5>
             <span style="font-size:0.6rem; color:var(--accent-saffron); text-transform:uppercase;">${item.type}</span>
