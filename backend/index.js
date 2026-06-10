@@ -20,7 +20,11 @@ const QrConfig     = require('./models/QrConfig');
 const app  = express();
 const PORT = process.env.PORT || 5000;
 
-app.use(cors());
+app.use(cors({
+  origin: [
+    'https://blkgod.netlify.app'
+  ]
+}));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '..', 'frontend')));
 
