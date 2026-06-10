@@ -1,6 +1,11 @@
 const mongoose = require('mongoose');
 const bcrypt   = require('bcryptjs');
 
+// Must be before any model requires — ensures id virtual is included in all res.json() responses
+mongoose.plugin(function(schema) {
+  schema.options.toJSON = Object.assign({}, schema.options.toJSON, { virtuals: true });
+});
+
 const User         = require('./models/User');
 const Donation     = require('./models/Donation');
 const Expense      = require('./models/Expense');
@@ -9,7 +14,7 @@ const Announcement = require('./models/Announcement');
 const QrConfig     = require('./models/QrConfig');
 
 async function connectDB() {
-  await mongoose.connect(process.env.MONGODB_URI);
+  await mongoose.connect(process.env.MONGODB_URI, { dbName: 'ammavari_seva' });
   console.log('MongoDB Atlas connected.');
   await seedIfEmpty();
 }
@@ -20,9 +25,11 @@ async function seedIfEmpty() {
 
   console.log('First run — seeding initial data...');
 
-  // Admin user
-  const passwordHash = bcrypt.hashSync('AmmavariSeva2026!', 10);
-  await User.create({ username: 'admin', passwordHash, role: 'admin', name: 'Festival Administrator' });
+  // Admin user — credentials read from .env
+  const adminUsername = process.env.ADMIN_USERNAME || 'admin';
+  const adminPassword = process.env.ADMIN_PASSWORD || 'AmmavariSeva2026!';
+  const passwordHash  = bcrypt.hashSync(adminPassword, 10);
+  await User.create({ username: adminUsername, passwordHash, role: 'admin', name: 'Festival Administrator' });
 
   // Payment QR config (single document)
   await QrConfig.create({

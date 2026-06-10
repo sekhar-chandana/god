@@ -22,7 +22,7 @@ const PORT = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, '..', 'client')));
+app.use(express.static(path.join(__dirname, '..', 'frontend')));
 
 // Multer instances backed by Cloudinary storage
 const uploadDonation = multer({ storage: donationStorage, limits: { fileSize: 10 * 1024 * 1024 } });
@@ -245,7 +245,8 @@ app.post('/api/admin/expenses', authenticateAdmin, uploadExpense.single('receipt
 app.delete('/api/admin/expenses/:id', authenticateAdmin, async (req, res) => {
   try {
     const expense = await Expense.findById(req.params.id);
-    if (!expense) return res.status(404).json({ error: 'Expense record not found.' });
+    if (!expense)
+       return res.status(404).json({ error: 'Expense record not found.' });
 
     if (expense.receiptPublicId) {
       await cloudinary.uploader.destroy(expense.receiptPublicId).catch(console.error);
@@ -392,7 +393,7 @@ app.post('/api/admin/profile', authenticateAdmin, async (req, res) => {
 
 // Wildcard: serve SPA
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'client', 'index.html'));
+  res.sendFile(path.join(__dirname, '..', 'frontend', 'index.html'));
 });
 
 // Connect to MongoDB first, then start HTTP server
