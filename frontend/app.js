@@ -2,7 +2,7 @@
    SRI AMMAVARI UTSAVAM - CLIENT LOGIC & SERVER BINDINGS
    ==================================================== */
 
-const API_BASE = ''; // Relative path, same host
+const API_BASE = 'https://god-4-cefe.onrender.com'; // Relative path, same host
 
 const App = {
   // Session details
